@@ -1,9 +1,11 @@
 buildscript {
     repositories {
+        mavenLocal()
+        jcenter()
         mavenCentral()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.51"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.61"
     }
 }
 
@@ -15,12 +17,15 @@ apply plugin: "kotlin"
 sourceCompatibility = 1.8
 
 repositories {
-    mavenCentral()
+    mavenLocal()
+    jcenter()
+    maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
     maven { url 'https://packages.confluent.io/maven/' }
+    mavenCentral()
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.51"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.61"
 
     // fake data generator
     compile "com.github.javafaker:javafaker:0.15"
@@ -35,5 +40,13 @@ dependencies {
 
     // Kafka
     compile 'org.apache.kafka:kafka-clients:2.0.0'
-    compile 'io.confluent:kafka-avro-serializer:5.0.0'
+    compile group: 'org.apache.kafka', name: 'kafka-streams', version: '2.0.0'
+
+    //camel
+//    compile 'org.apache.camel:apache-camel:2.22.1'
+//    compile 'org.apache.camel:camel-kafka:2.22.1'
+
+    testCompile 'junit:junit:4.12'
+//    compile group: 'org.apache.avro', name: 'avro', version: '1.8.2'
+
 }
