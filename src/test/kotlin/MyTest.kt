@@ -1,11 +1,10 @@
+import org.apache.commons.codec.binary.Hex
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.kstream.Produced
 import org.junit.Test
-import java.io.File
-import java.io.ObjectOutputStream
 import java.util.*
 import java.util.concurrent.CountDownLatch
 
@@ -14,20 +13,18 @@ class MyTest {
 
     @Test
     fun test() {
-        val builder = StreamsBuilder()
-
         //duplicate it
-        DupThread().start()
-        DupThread().start()
-        DupThread().start()
-        LoadOutThread().start()
+//        DupThread().start()
 
 //➜  bin/kafka-console-consumer.sh --bootstrap-server 192.168.1.40:9092 --topic plugintest --from-beginning
 //➜  bin/kafka-console-consumer.sh --bootstrap-server 192.168.1.40:9092 --topic streams-out --from-beginning
-
+        val builder = StreamsBuilder()
         builder
-                .stream<String, String>(TOPIC_STREAM_DUP)
-                .to("streams-out", Produced.with(Serdes.String(), Serdes.String()))
+                .stream<String, ByteArray>(TOPIC_ORIGINAL)
+                .peek { key, value ->
+                    println("out::: key:$key, ${String(Hex.encodeHex(value))}")
+                }
+                .to("streams-out")
 
         val topology = builder.build()
         val streams = KafkaStreams(topology, props)
@@ -56,7 +53,7 @@ class MyTest {
         override fun run() {
             StreamsBuilder().stream<String, String>(TOPIC_STREAM_OUT)
                     .peek { key, value ->
-                        println("key:$key, value:$value")
+                        println("out::: key:$key, value:$value")
                     }
         }
 
@@ -65,19 +62,21 @@ class MyTest {
     class DupThread : Thread() {
 
         override fun run() {
-            val file = File("${Thread.currentThread().name}.log")
-            val out = file.outputStream()
-            val objOut = ObjectOutputStream(out)
+//            val file = File("${Thread.currentThread().name}.log")
+//            val out = file.outputStream()
+//            val objOut = ObjectOutputStream(out)
             val builder = StreamsBuilder()
             builder.stream<String, String>(TOPIC_ORIGINAL)
-                    .peek { key, value ->
-                        objOut.writeObject(value)
-                        objOut.flush()
-                        println("${Thread.currentThread().name}::: key:$key, value:$value")
-                    }
+//                    .peek { _, value ->
+//                        objOut.writeObject(value)
+//                        objOut.flush()
+////                        println("${Thread.currentThread().name}::: key:$key, value:$value")
+//                    }
                     .to(TOPIC_STREAM_DUP)
 
             val topology = builder.build()
+
+//            props[ConsumerConfig.GROUP_ID_CONFIG] = Thread.currentThread().name
             KafkaStreams(topology, props).start()
         }
     }
@@ -87,11 +86,13 @@ class MyTest {
         val TOPIC_STREAM_DUP = "streams-dup"
         val TOPIC_STREAM_OUT = "streams-out"
         val HOST = "192.168.1.40:9092"
+
         val props = Properties().apply {
             this[StreamsConfig.APPLICATION_ID_CONFIG] = TOPIC_ORIGINAL
             this[StreamsConfig.BOOTSTRAP_SERVERS_CONFIG] = HOST
             this[StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG] = Serdes.String().javaClass
-            this[StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG] = Serdes.String().javaClass
+            this[StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG] = Serdes.ByteArray().javaClass
+            this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] ="earliest"
         }
     }
 }
